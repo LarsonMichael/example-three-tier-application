@@ -1,10 +1,20 @@
 const express = require('express');
 const db = require('./db');
+const log = require('./logger');
+const { requestId, requestLogger, errorHandler } = require('./middleware');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+app.use(requestId);
+app.use(requestLogger);
 app.use(express.json());
+
+// Record the task id so request logs can include it.
+app.param('id', (req, _res, next, id) => {
+  req.taskId = id;
+  next();
+});
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
@@ -26,6 +36,7 @@ app.post('/tasks', async (req, res) => {
     'INSERT INTO tasks (title) VALUES ($1) RETURNING *',
     [title.trim()]
   );
+  log.info({ taskId: rows[0].id }, 'task created');
   res.status(201).json(rows[0]);
 });
 
@@ -45,9 +56,21 @@ app.patch('/tasks/:id', async (req, res) => {
     'UPDATE tasks SET completed = $1, title = $2 WHERE id = $3 RETURNING *',
     [newCompleted, newTitle, id]
   );
+  log.info({ taskId: id, completed: newCompleted }, 'task updated');
   res.json(updated[0]);
 });
 
+app.use(errorHandler);
+
 app.listen(PORT, () => {
-  console.log(`API listening on port ${PORT}`);
+  log.info({ port: PORT, logLevel: log.level }, 'API listening');
+});
+
+process.on('unhandledRejection', (reason) => {
+  log.error({ err: reason }, 'unhandled promise rejection');
+});
+
+process.on('uncaughtException', (err) => {
+  log.fatal({ err }, 'uncaught exception');
+  process.exit(1);
 });

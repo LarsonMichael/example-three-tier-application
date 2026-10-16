@@ -1,8 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-
-const API_URL = process.env.API_URL || 'http://localhost:3001';
+import { apiFetch } from '@/lib/api';
+import { log } from '@/lib/logger';
 
 export type Task = {
   id: number;
@@ -12,26 +12,29 @@ export type Task = {
 };
 
 export async function getTasks(): Promise<Task[]> {
-  const res = await fetch(`${API_URL}/tasks`, { cache: 'no-store' });
+  const res = await apiFetch('/tasks', { cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to fetch tasks');
   return res.json();
 }
 
 export async function createTask(formData: FormData) {
   const title = formData.get('title') as string;
-  await fetch(`${API_URL}/tasks`, {
+  const res = await apiFetch('/tasks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ title }),
   });
+  if (res.ok) log.info({ action: 'createTask' }, 'user action');
   revalidatePath('/');
 }
 
 export async function toggleTask(id: number, completed: boolean) {
-  await fetch(`${API_URL}/tasks/${id}`, {
+  const res = await apiFetch(`/tasks/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ completed }),
+    logContext: { taskId: id },
   });
+  if (res.ok) log.info({ action: 'toggleTask', taskId: id, completed }, 'user action');
   revalidatePath('/');
 }

@@ -35,6 +35,11 @@ resource "google_cloud_run_v2_job" "migrate" {
           }
         }
 
+        env {
+          name  = "LOG_LEVEL"
+          value = var.log_level
+        }
+
         resources {
           limits = {
             cpu    = "1"

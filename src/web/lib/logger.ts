@@ -5,6 +5,14 @@ export type LogFields = Record<string, unknown>;
 
 const LEVELS: Record<Level, number> = { debug: 20, info: 30, warn: 40, error: 50 };
 
+// Cloud Logging reads `severity` and `message` from JSON log lines.
+const SEVERITY: Record<Level, string> = {
+  debug: 'DEBUG',
+  info: 'INFO',
+  warn: 'WARNING',
+  error: 'ERROR',
+};
+
 function configuredLevel(): number {
   const name = (process.env.LOG_LEVEL || 'info').toLowerCase();
   return name in LEVELS ? LEVELS[name as Level] : LEVELS.info;
@@ -19,26 +27,27 @@ export function serializeError(err: unknown): LogFields {
   return { message: String(err) };
 }
 
-function write(level: Level, fields: LogFields, msg: string) {
+function write(level: Level, fields: LogFields, message: string) {
   if (LEVELS[level] < configuredLevel()) return;
 
-  const entry = {
-    level,
-    time: new Date().toISOString(),
-    service: 'web',
-    ...fields,
-    msg,
-  };
+  const time = new Date().toISOString();
   const line = PRETTY
-    ? `${entry.time} ${level.toUpperCase()} ${msg} ${JSON.stringify(fields)}\n`
-    : `${JSON.stringify(entry)}\n`;
+    ? `${time} ${level.toUpperCase()} ${message} ${JSON.stringify(fields)}\n`
+    : `${JSON.stringify({
+        level,
+        severity: SEVERITY[level],
+        time,
+        service: 'web',
+        ...fields,
+        message,
+      })}\n`;
 
   (level === 'error' || level === 'warn' ? process.stderr : process.stdout).write(line);
 }
 
 export const log = {
-  debug: (fields: LogFields, msg: string) => write('debug', fields, msg),
-  info: (fields: LogFields, msg: string) => write('info', fields, msg),
-  warn: (fields: LogFields, msg: string) => write('warn', fields, msg),
-  error: (fields: LogFields, msg: string) => write('error', fields, msg),
+  debug: (fields: LogFields, message: string) => write('debug', fields, message),
+  info: (fields: LogFields, message: string) => write('info', fields, message),
+  warn: (fields: LogFields, message: string) => write('warn', fields, message),
+  error: (fields: LogFields, message: string) => write('error', fields, message),
 };

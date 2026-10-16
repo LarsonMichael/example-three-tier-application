@@ -25,7 +25,7 @@ export async function reportClientError(report: unknown): Promise<void> {
   log.error(
     {
       source: 'client',
-      message: field(input.message),
+      reason: field(input.message),
       digest: field(input.digest),
       stack: field(input.stack),
       path: field(input.path),

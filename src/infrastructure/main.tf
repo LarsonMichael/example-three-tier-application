@@ -148,6 +148,13 @@ resource "google_project_iam_member" "cloud_run_sql" {
   member  = "serviceAccount:${google_service_account.cloud_run.email}"
 }
 
+# Cloud Run ships container stdout/stderr (JSON lines) to Cloud Logging.
+resource "google_project_iam_member" "cloud_run_logging" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.cloud_run.email}"
+}
+
 resource "google_secret_manager_secret_iam_member" "cloud_run_db_url" {
   secret_id = google_secret_manager_secret.db_url.id
   role      = "roles/secretmanager.secretAccessor"
@@ -194,6 +201,11 @@ resource "google_cloud_run_v2_service" "api" {
       env {
         name  = "PORT"
         value = "3001"
+      }
+
+      env {
+        name  = "LOG_LEVEL"
+        value = var.log_level
       }
 
       resources {
@@ -255,6 +267,11 @@ resource "google_cloud_run_v2_service" "web" {
       env {
         name  = "PORT"
         value = "3000"
+      }
+
+      env {
+        name  = "LOG_LEVEL"
+        value = var.log_level
       }
 
       env {

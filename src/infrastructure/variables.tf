@@ -26,6 +26,17 @@ variable "environment" {
   }
 }
 
+variable "log_level" {
+  description = "Log level for all services (debug, info, warn, error)"
+  type        = string
+  default     = "info"
+
+  validation {
+    condition     = contains(["debug", "info", "warn", "error"], var.log_level)
+    error_message = "log_level must be one of: debug, info, warn, error"
+  }
+}
+
 variable "subnet_cidr" {
   description = "CIDR range for the main subnet"
   type        = string
